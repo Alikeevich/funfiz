@@ -36,13 +36,47 @@ export default function CourseList() {
 
   const fetchCourses = async () => {
     try {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      const role = profile?.role;
 
-      if (error) throw error;
-      setCourses(data || []);
+      let data = [];
+
+      if (role === 'teacher') {
+          // Учитель: видит курсы, которые создал ОН
+          const { data: teacherCourses } = await supabase
+            .from('courses')
+            .select('*')
+            .eq('teacher_id', user.id) // <--- Фильтр
+            .order('created_at', { ascending: false });
+          
+          data = teacherCourses || [];
+      } else {
+          // Ученик: видит курсы из таблицы enrollments
+          // Получаем ID курсов
+          const { data: enrollments } = await supabase
+             .from('enrollments')
+             .select('course_id')
+             .eq('user_id', user.id);
+          
+          if (enrollments && enrollments.length > 0) {
+              const courseIds = enrollments.map(e => e.course_id);
+              
+              const { data: studentCourses } = await supabase
+                  .from('courses')
+                  .select('*')
+                  .in('id', courseIds) // <--- Берем только зачисленные
+                  .order('created_at', { ascending: false });
+              
+              data = studentCourses || [];
+          } else {
+              data = []; // Никуда не зачислен
+          }
+      }
+
+      setCourses(data);
     } catch (error) {
       toast.error('Не удалось загрузить курсы');
     } finally {
