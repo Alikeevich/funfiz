@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { X, ExternalLink, AlertCircle, CheckCircle, FileText, Download, Image as ImageIcon, HelpCircle } from 'lucide-react';
+import { X, ExternalLink, AlertCircle, CheckCircle, FileText, Download, Image as ImageIcon, HelpCircle, Gamepad2 } from 'lucide-react';
 import { Lesson } from '../types';
 import Comments from './Comments';
 import { supabase } from '../supabaseClient';
@@ -82,6 +82,29 @@ const LessonContent = React.memo(({ type, url, quizData, onComplete }: { type: s
                     </div>
                 </div>
             );
+            
+        case 'kahoot':
+            return (
+                <div className="w-full h-full flex items-center justify-center bg-[#f2f2f2] p-4">
+                    <div className="bg-white p-8 rounded-xl shadow-xl text-center max-w-sm w-full border-b-4 border-gray-200">
+                        <div className="w-20 h-20 bg-[#46178f] text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg rotate-3">
+                            <Gamepad2 size={40} />
+                        </div>
+                        <h3 className="text-2xl font-black mb-2 text-[#46178f]">Kahoot!</h3>
+                        <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                            Kahoot блокирует открытие игры внутри других сайтов. Нажми на кнопку ниже, чтобы перейти к игре в новой вкладке!
+                        </p>
+                        <a 
+                            href={url} 
+                            target="_blank"
+                            rel="noreferrer"
+                            className="bg-[#33a423] text-white px-6 py-4 rounded font-bold hover:bg-[#28811b] transition flex items-center justify-center gap-2 shadow-[0_4px_0_#1e6314] active:translate-y-1 active:shadow-none w-full text-lg"
+                        >
+                            Играть в Kahoot <ExternalLink size={20} />
+                        </a>
+                    </div>
+                </div>
+            );
 
         default: // website
             return (
@@ -110,7 +133,7 @@ interface LessonPlayerProps {
 }
 
 export default function LessonPlayer({ lesson, onClose, onComplete, isCompleted }: LessonPlayerProps) {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const[currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -123,7 +146,7 @@ export default function LessonPlayer({ lesson, onClose, onComplete, isCompleted 
         }
     };
     getUser();
-  }, []);
+  },[]);
 
   // Вычисляем тип (мемоизация)
   const type = useMemo(() => {
@@ -135,6 +158,10 @@ export default function LessonPlayer({ lesson, onClose, onComplete, isCompleted 
       if (link.includes('youtube.com') || link.includes('youtu.be')) return 'youtube';
       
       const lower = link.toLowerCase();
+      
+      // Проверка на Kahoot
+      if (lower.includes('kahoot.it') || lower.includes('kahoot.com')) return 'kahoot';
+
       if (lower.match(/\.(jpeg|jpg|gif|png|webp)$/)) return 'image';
       if (lower.match(/\.pdf$/)) return 'pdf';
       if (lower.includes('course_materials')) return 'file'; 
@@ -145,7 +172,7 @@ export default function LessonPlayer({ lesson, onClose, onComplete, isCompleted 
   if (!lesson) return null;
 
   const url = lesson.content_link || '';
-  const isScrollable = type === 'quiz' || type === 'file' || type === 'image';
+  const isScrollable = type === 'quiz' || type === 'file' || type === 'image' || type === 'kahoot';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
@@ -170,11 +197,10 @@ export default function LessonPlayer({ lesson, onClose, onComplete, isCompleted 
         <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-gray-100 relative">
             
             {/* Левая часть: КОНТЕНТ */}
-            <div className={`flex-1 flex flex-col relative border-r border-gray-200 ${type === 'quiz' ? 'bg-gray-50' : ''}`}>
+            <div className={`flex-1 flex flex-col relative border-r border-gray-200 ${type === 'quiz' || type === 'kahoot' ? 'bg-gray-50' : ''}`}>
                 
                 {/* Контейнер контента */}
                 <div className={`flex-1 relative w-full ${isScrollable ? 'overflow-y-auto -webkit-overflow-scrolling-touch' : 'overflow-hidden'}`}>
-                    {/* ВОТ ЗДЕСЬ МАГИЯ: Используем наш Memo-компонент */}
                     <LessonContent 
                         type={type} 
                         url={url} 
