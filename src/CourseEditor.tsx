@@ -203,11 +203,28 @@ export default function CourseEditor() {
 
   const deleteLesson = async (lessonId: number) => {
       if(!confirm('Точно удалить?')) return;
-      const { error } = await supabase.from('lessons').delete().eq('id', lessonId);
-      if(!error) { 
-          toast.success('Удалено'); 
-          fetchData(); 
+      
+      // Добавляем .select(), чтобы получить удаленные данные
+      const { error, data } = await supabase
+        .from('lessons')
+        .delete()
+        .eq('id', lessonId)
+        .select();
+  
+      if (error) {
+          // Если база ругается (например, на связи с комментариями)
+          toast.error('Не удалось удалить: ' + error.message);
+          return;
       }
+  
+      if (data && data.length === 0) {
+          // Ошибки нет, но удалено 0 строк (блокирует RLS)
+          toast.error('Нет прав на удаление или урок не найден (проверьте RLS в Supabase)');
+          return;
+      }
+  
+      toast.success('Урок успешно удален'); 
+      fetchData(); 
   };
 
   // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ОТКРЫТИЯ ОКОН ---
